@@ -7,18 +7,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
+        html { scroll-behavior: smooth; }
         :root {
             --theme-primary: #132e54;
-            --theme-shadow: 0px 3px 1px -2px rgba(0,0,0,0.2), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 1px 5px 0px rgba(0,0,0,0.12);
-            --theme-shadow-heavy: 0px 5px 5px -3px rgba(0,0,0,0.2), 0px 8px 10px 1px rgba(0,0,0,0.14), 0px 3px 14px 2px rgba(0,0,0,0.12);
+            --theme-shadow: 0px 3px 1px -2px rgba(0,0,0,0.2),0px 2px 2px 0px rgba(0,0,0,0.14),0px 1px 5px 0px rgba(0,0,0,0.12);
+            --theme-shadow-heavy: 0px 5px 5px -3px rgba(0,0,0,0.2),0px 8px 10px 1px rgba(0,0,0,0.14),0px 3px 14px 2px rgba(0,0,0,0.12);
         }
         [x-cloak] { display: none !important; }
-        :focus-visible {
-            outline: 3px solid var(--theme-primary) !important;
-            outline-offset: 2px;
-        }
+        :focus-visible { outline: 3px solid var(--theme-primary) !important; outline-offset: 2px; }
         .card-elevation { box-shadow: var(--theme-shadow); transition: box-shadow 0.3s ease; }
         .card-elevation:hover { box-shadow: var(--theme-shadow-heavy); }
+        .tooltip-box {
+            position: fixed; z-index: 9999; width: 16rem;
+            background: #0f172a; color: #fff; font-size: 0.75rem; line-height: 1.5;
+            border-radius: 0.75rem; padding: 0.75rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            pointer-events: none; transform: translateY(-100%) translateY(-8px);
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans leading-relaxed">
@@ -27,129 +32,218 @@
         Skip to main content
     </a>
 
-    <div x-data="accessMatchApp()" x-init="init()" x-cloak class="max-w-6xl mx-auto p-4 md:p-10">
-        
-        <header role="banner" class="mb-10 border-b-2 border-slate-200 pb-8">
-            <h1 class="text-4xl font-extrabold text-[#132e54] tracking-tight">AccessMatch</h1>
-            <p class="text-lg text-slate-700 mt-3 max-w-2xl">
+    <div x-data="accessMatchApp()" x-init="init()" x-cloak class="max-w-6xl mx-auto p-4 md:p-8 lg:p-10">
+
+        <!-- HEADER -->
+        <header role="banner" class="mb-8 md:mb-10 border-b-2 border-slate-200 pb-6 md:pb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-[#132e54] tracking-tight">AccessMatch</h1>
+            <p class="text-base md:text-lg text-slate-700 mt-2 md:mt-3 max-w-2xl">
                 Find the housing that matches your OAS accommodations. Private, secure, and accessible.
             </p>
+            <div class="mt-5 max-w-3xl space-y-3">
+                <div class="flex gap-3">
+                    <span class="mt-0.5 flex-shrink-0 w-6 h-6 rounded-full bg-[#132e54] text-white text-xs font-black flex items-center justify-center">1</span>
+                    <p class="text-slate-700 text-sm leading-relaxed">
+                        Select <strong>only</strong> the housing accommodations that appear in your official
+                        <strong>Office of Accessibility Services (OAS) accommodation letter</strong>.
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="mt-0.5 flex-shrink-0 w-6 h-6 rounded-full bg-[#132e54] text-white text-xs font-black flex items-center justify-center">2</span>
+                    <p class="text-slate-700 text-sm leading-relaxed">
+                        To officially request your preferred housing assignments with your approved accommodations,
+                        submit the <strong>Room Selection form</strong> sent to your email.
+                    </p>
+                </div>
+                <div class="flex gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3 md:p-4">
+                    <svg class="flex-shrink-0 w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <p class="text-amber-800 text-sm leading-relaxed">
+                        <strong>Note:</strong> If you select options that go beyond what OAS has approved, your request will be canceled.
+                        You will then be administratively assigned a room that meets <em>only</em> the accommodations listed in your OAS letter.
+                    </p>
+                </div>
+            </div>
         </header>
 
+        <!-- LOADING -->
         <template x-if="loading">
             <div class="text-center py-20">
                 <p class="text-xl font-bold text-slate-500 animate-pulse">Loading housing data...</p>
             </div>
         </template>
 
-        <div x-show="!loading" class="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            
-            <aside class="lg:col-span-4" aria-labelledby="filter-heading">
-                <div class="bg-white p-8 rounded-2xl border border-slate-200 card-elevation sticky top-6">
-                    <h2 id="filter-heading" class="text-2xl font-bold text-slate-800 mb-6 border-l-4 border-[#132e54] pl-3">Accommodation Filters</h2>
+        <!-- MAIN LAYOUT -->
+        <div x-show="!loading" x-data="{ filtersOpen: false }" class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
 
-                    <form @submit.prevent>
-                        <div class="mb-8">
-                            <label for="budget-range" class="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">
-                                Max Semester Budget: <span class="text-[#132e54]" x-text="'$' + filters.maxPrice"></span>
-                            </label>
-                            <input type="range" id="budget-range" min="3000" max="6000" step="50" 
-                                   x-model="filters.maxPrice" 
-                                   class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#132e54]">
-                        </div>
+            <!-- FILTER SIDEBAR -->
+            <aside class="lg:col-span-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:flex lg:flex-col" aria-labelledby="filter-heading">
 
-                        <fieldset class="space-y-3">
-                            <legend class="text-xs font-black text-slate-500 mb-4 uppercase tracking-widest">Required Features</legend>
-                            <template x-for="need in availableNeeds" :key="need.id">
-                                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <label :for="'btn-' + need.id" class="text-sm font-semibold text-slate-700 pr-2" x-text="need.label"></label>
-                                    
-                                    <button type="button" 
-                                            :id="'btn-' + need.id"
-                                            role="switch"
-                                            :aria-checked="filters.selectedNeeds.includes(need.id)"
-                                            @click="toggleNeed(need.id)"
-                                            :class="filters.selectedNeeds.includes(need.id) ? 'bg-[#132e54] border-[#132e54]' : 'bg-slate-300 border-slate-400'"
-                                            class="relative inline-flex h-8 w-20 items-center rounded border-2 transition-colors focus:ring-2 focus:ring-[#132e54] focus:ring-offset-2">
-                                        
-                                        <span class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-black pointer-events-none">
-                                            <span :class="filters.selectedNeeds.includes(need.id) ? 'text-white' : 'text-transparent'">ON</span>
-                                            <span :class="filters.selectedNeeds.includes(need.id) ? 'text-transparent' : 'text-slate-700'">OFF</span>
-                                        </span>
+                <!-- Mobile toggle button (hidden lg+) -->
+                <button @click="filtersOpen = !filtersOpen"
+                        class="lg:hidden w-full flex items-center justify-between bg-white border border-slate-200 card-elevation rounded-2xl px-5 py-4 font-bold text-slate-800 mb-3">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-[#132e54]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+                        Accommodation Filters
+                        <span x-show="filters.selectedNeeds.length > 0"
+                              class="bg-[#132e54] text-white text-xs font-black rounded-full px-2 py-0.5"
+                              x-text="filters.selectedNeeds.length + (filters.selectedNeeds.length === 1 ? ' active' : ' active')"></span>
+                    </span>
+                    <svg class="w-5 h-5 text-slate-500 transition-transform duration-300" :class="filtersOpen ? 'rotate-180' : ''"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
 
-                                        <span aria-hidden="true" 
-                                              :class="filters.selectedNeeds.includes(need.id) ? 'translate-x-11' : 'translate-x-1'"
-                                              class="pointer-events-none inline-block h-5 w-6 transform rounded-sm bg-white shadow transition duration-200 ease-in-out">
-                                        </span>
-                                    </button>
+                <!-- Filter panel: collapses on mobile, always visible + scrollable on desktop -->
+                <div x-show="filtersOpen"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 -translate-y-2"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 -translate-y-2"
+                     class="lg:!block bg-white rounded-2xl border border-slate-200 card-elevation overflow-y-auto lg:flex-1">
+                    <!-- Force correct initial state -->
+                    <div class="p-5 md:p-8">
+
+                        <h2 id="filter-heading" class="text-xl md:text-2xl font-bold text-slate-800 mb-5 md:mb-6 border-l-4 border-[#132e54] pl-3">Accommodation Filters</h2>
+
+                        <form @submit.prevent>
+                            <!-- Budget slider -->
+                            <div class="mb-6 md:mb-8">
+                                <label for="budget-range" class="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">
+                                    Max Semester Budget: <span class="text-[#132e54]" x-text="'$' + Number(filters.maxPrice).toLocaleString()"></span>
+                                </label>
+                                <input type="range" id="budget-range" :min="priceMin" :max="priceMax" step="50"
+                                       x-model="filters.maxPrice"
+                                       class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#132e54]">
+                                <div class="flex justify-between text-xs text-slate-400 mt-1.5 font-medium">
+                                    <span x-text="'$' + Number(priceMin).toLocaleString()"></span>
+                                    <span x-text="'$' + Number(priceMax).toLocaleString()"></span>
                                 </div>
-                            </template>
-                        </fieldset>
+                            </div>
 
-                        <button @click="resetFilters" 
-                                class="mt-8 w-full py-3 px-4 border-2 border-[#132e54] rounded-xl text-sm font-bold text-[#132e54] hover:bg-[#132e54] hover:text-white transition-all">
-                            Reset All Filters
-                        </button>
-                    </form>
+                            <!-- Feature toggles -->
+                            <fieldset class="space-y-2">
+                                <legend class="text-xs font-black text-slate-500 mb-3 uppercase tracking-widest">Required Features</legend>
+                                <template x-for="need in availableNeeds" :key="need.id">
+                                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div class="flex items-center gap-1.5 pr-2 min-w-0">
+                                            <!-- Glossary tooltip -->
+                                            <div class="relative flex-shrink-0" x-data="{ open: false, tx: 0, ty: 0 }">
+                                                <button type="button"
+                                                        @mouseenter="open = true; const r = $el.getBoundingClientRect(); tx = r.left; ty = r.top;"
+                                                        @mouseleave="open = false"
+                                                        @focus="open = true; const r = $el.getBoundingClientRect(); tx = r.left; ty = r.top;"
+                                                        @blur="open = false"
+                                                        class="w-4 h-4 rounded-full bg-slate-300 text-slate-600 text-[10px] font-black flex items-center justify-center hover:bg-[#132e54] hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#132e54]"
+                                                        :aria-label="'Definition: ' + need.label">?</button>
+                                                <div x-show="open"
+                                                     x-transition:enter="transition ease-out duration-150"
+                                                     x-transition:enter-start="opacity-0 translate-y-1"
+                                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                                     class="tooltip-box"
+                                                     :style="`left: ${tx}px; top: ${ty}px;`"
+                                                     x-text="need.glossary">
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-col min-w-0">
+                                                <label :for="'btn-' + need.id" class="text-sm font-semibold text-slate-700 leading-tight cursor-pointer" x-text="need.label"></label>
+                                                <span x-show="need.pending" class="text-[10px] font-bold text-amber-600 uppercase tracking-wide">Data pending</span>
+                                            </div>
+                                        </div>
+                                        <button type="button"
+                                                :id="'btn-' + need.id"
+                                                role="switch"
+                                                :aria-checked="filters.selectedNeeds.includes(need.id)"
+                                                @click="toggleNeed(need.id)"
+                                                :class="filters.selectedNeeds.includes(need.id) ? 'bg-[#132e54] border-[#132e54]' : 'bg-slate-300 border-slate-400'"
+                                                class="relative inline-flex flex-shrink-0 h-8 w-20 items-center rounded border-2 transition-colors focus:ring-2 focus:ring-[#132e54] focus:ring-offset-2">
+                                            <span class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-black pointer-events-none">
+                                                <span :class="filters.selectedNeeds.includes(need.id) ? 'text-white' : 'text-transparent'">ON</span>
+                                                <span :class="filters.selectedNeeds.includes(need.id) ? 'text-transparent' : 'text-slate-700'">OFF</span>
+                                            </span>
+                                            <span aria-hidden="true"
+                                                  :class="filters.selectedNeeds.includes(need.id) ? 'translate-x-11' : 'translate-x-1'"
+                                                  class="pointer-events-none inline-block h-5 w-6 transform rounded-sm bg-white shadow transition duration-200 ease-in-out">
+                                            </span>
+                                        </button>
+                                    </div>
+                                </template>
+                            </fieldset>
+
+                            <button @click="resetFilters"
+                                    class="mt-6 w-full py-3 px-4 border-2 border-[#132e54] rounded-xl text-sm font-bold text-[#132e54] hover:bg-[#132e54] hover:text-white transition-all">
+                                Reset All Filters
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </aside>
 
+            <!-- MAIN CONTENT -->
             <main id="main-content" class="lg:col-span-8">
-                 <section x-show="rankedList.length > 0" class="mt-16 bg-[#132e54] rounded-3xl p-8 text-white shadow-2xl">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+                <div id="top"></div>
+
+                <!-- Ranked preference list -->
+                <section x-show="rankedList.length > 0" class="mb-8 md:mb-12 bg-[#132e54] rounded-2xl md:rounded-3xl p-5 md:p-8 text-white shadow-2xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 gap-4">
                         <div>
-                            <h2 class="text-3xl font-black tracking-tight">My Preference List</h2>
-                            <p class="text-slate-300 mt-1">Finalize your ranking before downloading.</p>
+                            <h2 class="text-2xl md:text-3xl font-black tracking-tight">My Preference List</h2>
+                            <p class="text-slate-300 mt-1 text-sm">Finalize your ranking before downloading.</p>
                         </div>
-                        <button @click="downloadList" class="bg-white text-[#132e54] px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-100 transition-colors shadow-xl">
+                        <button @click="downloadList" class="w-full sm:w-auto bg-white text-[#132e54] px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-100 transition-colors shadow-xl">
                             Download Final List
                         </button>
                     </div>
                     <div class="space-y-3" role="list">
                         <template x-for="(room, index) in rankedList" :key="room.building + room.room">
-                            <div class="bg-white/10 backdrop-blur-sm p-5 rounded-2xl flex items-center gap-4 border border-white/10" role="listitem">
-                                <div class="w-12 h-12 bg-white text-[#132e54] rounded-xl flex items-center justify-center text-xl font-black shadow-inner" x-text="index + 1"></div>
-                                <div class="flex-grow">
-                                    <span class="text-xl font-bold block" x-text="room.building + ' ' + room.room"></span>
+                            <div class="bg-white/10 backdrop-blur-sm p-4 md:p-5 rounded-xl md:rounded-2xl flex items-center gap-3 md:gap-4 border border-white/10" role="listitem">
+                                <div class="w-10 h-10 md:w-12 md:h-12 bg-white text-[#132e54] rounded-lg md:rounded-xl flex items-center justify-center text-lg md:text-xl font-black shadow-inner flex-shrink-0" x-text="index + 1"></div>
+                                <div class="flex-grow min-w-0">
+                                    <span class="text-base md:text-xl font-bold block truncate" x-text="room.building + ' ' + room.room"></span>
                                     <span class="text-slate-300 text-xs uppercase font-bold tracking-widest" x-text="room.room_type"></span>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <button @click="moveUp(index)" :disabled="index === 0" class="p-2 hover:bg-white/20 rounded-lg disabled:opacity-20 transition-colors">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div class="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                                    <button @click="moveUp(index)" :disabled="index === 0" class="p-1.5 md:p-2 hover:bg-white/20 rounded-lg disabled:opacity-20 transition-colors">
+                                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
-                                    <button @click="moveDown(index)" :disabled="index === rankedList.length - 1" class="p-2 hover:bg-white/20 rounded-lg disabled:opacity-20 transition-colors">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <button @click="moveDown(index)" :disabled="index === rankedList.length - 1" class="p-1.5 md:p-2 hover:bg-white/20 rounded-lg disabled:opacity-20 transition-colors">
+                                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
-                                    <button @click="removeFromRanked(index)" class="p-2 text-red-300 hover:text-red-100 transition-colors ml-4">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <button @click="removeFromRanked(index)" class="p-1.5 md:p-2 text-red-300 hover:text-red-100 transition-colors ml-1 md:ml-2">
+                                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
                                 </div>
                             </div>
                         </template>
                     </div>
                 </section>
-                <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Matching Results</h2>
-                    <div role="status" aria-live="polite" class="bg-[#132e54] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md">
+
+                <!-- Results header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 gap-3">
+                    <h2 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Matching Results</h2>
+                    <div role="status" aria-live="polite" class="self-start sm:self-auto bg-[#132e54] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md">
                         <span x-text="filteredRooms.length"></span> Matching Rooms
                     </div>
                 </div>
 
-                <div class="space-y-4">
+                <!-- Room cards -->
+                <div class="space-y-3 md:space-y-4">
                     <template x-for="room in filteredRooms" :key="room.building + room.room">
-                        <article class="bg-white p-6 rounded-2xl border border-slate-200 card-elevation">
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                                <div>
-                                    <h3 class="text-2xl font-black text-slate-900" x-text="room.building + ' ' + room.room"></h3>
-                                    <p class="text-slate-600 font-medium uppercase text-xs tracking-widest" x-text="room.room_type"></p>
-                                    <div class="mt-4 flex flex-wrap gap-2">
+                        <article class="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 card-elevation">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 md:gap-6">
+                                <div class="flex-grow min-w-0">
+                                    <h3 class="text-xl md:text-2xl font-black text-slate-900" x-text="room.building + ' ' + room.room"></h3>
+                                    <p class="text-slate-600 font-medium uppercase text-xs tracking-widest mt-0.5" x-text="room.room_type"></p>
+                                    <div class="mt-3 flex flex-wrap gap-2">
                                         <span class="bg-slate-100 text-slate-700 text-xs px-3 py-1 rounded-full font-bold border border-slate-200" x-text="room.dorm_plan"></span>
-                                        <template x-if="room.bathroom_attached === 'Y'"><span class="bg-emerald-50 text-emerald-800 text-xs px-3 py-1 rounded-full font-bold border border-emerald-100">Private Bath</span></template>
+                                        <template x-if="room.bathroom_attached === 'Y'">
+                                            <span class="bg-emerald-50 text-emerald-800 text-xs px-3 py-1 rounded-full font-bold border border-emerald-100">Private Bath</span>
+                                        </template>
                                     </div>
                                 </div>
-                                <button @click="addToRanked(room)" 
+                                <button @click="addToRanked(room)"
                                         :disabled="isRanked(room)"
-                                        class="shrink-0 w-full sm:w-auto px-8 py-3 rounded-xl font-bold transition-all text-sm uppercase tracking-tighter"
+                                        class="shrink-0 w-full sm:w-auto px-6 md:px-8 py-3 rounded-xl font-bold transition-all text-sm uppercase tracking-tighter"
                                         :class="isRanked(room) ? 'bg-slate-100 text-slate-400' : 'bg-[#132e54] text-white hover:opacity-90 shadow-lg'">
                                     <span x-text="isRanked(room) ? 'In List' : 'Add to List'"></span>
                                 </button>
@@ -157,9 +251,27 @@
                         </article>
                     </template>
                 </div>
-
-               
             </main>
+        </div>
+
+        <!-- Back to top -->
+        <div x-data="{ showTopButton: false }"
+             @scroll.window="showTopButton = (window.pageYOffset > 500)"
+             class="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50">
+            <a href="#top"
+               x-show="showTopButton"
+               x-transition:enter="transition ease-out duration-300"
+               x-transition:enter-start="opacity-0 translate-y-10"
+               x-transition:enter-end="opacity-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-300"
+               x-transition:leave-start="opacity-100 translate-y-0"
+               x-transition:leave-end="opacity-0 translate-y-10"
+               class="bg-[#132e54] text-white p-3 md:p-4 rounded-full shadow-2xl hover:bg-slate-700 focus:ring-4 focus:ring-blue-300 transition-all flex items-center justify-center"
+               aria-label="Back to top">
+                <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M5 15l7-7 7 7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
         </div>
     </div>
 
@@ -171,27 +283,66 @@
             rooms: [],
             loading: true,
             availableNeeds: [
-                { id: 'access_to_single_use_bathroom', label: 'Single-Use Bathroom' },
-                { id: 'bathroom_attached', label: 'Attached Bathroom' },
-                { id: 'carpet_free', label: 'Carpet-Free' },
-                { id: 'elevator_access', label: 'Elevator Access' },
-                { id: 'ground_floor_access', label: 'Ground Floor' },
-                { id: 'personal_refrigerator', label: 'Personal Refrigerator' },
-                { id: 'roommate_free', label: 'Single Occupancy' },
-                { id: 'space_for_medical_equipment', label: 'Medical Equipment Space' },
-                { id: 'window_hvac_unit', label: 'Window HVAC' }
+                { id: 'access_to_single_use_bathroom', label: 'Single-Use Bathroom Access',               pending: false, glossary: 'A bathroom not attached to the room but designed for one person at a time, with a lock the user can secure while inside.' },
+                { id: 'bathroom_attached',             label: 'Attached Bathroom',                         pending: false, glossary: 'A room with a privately accessible bathroom that only assigned residents (and approved guests) may enter.' },
+                { id: 'carpet_free',                   label: 'Carpet-Free',                               pending: false, glossary: "A housing assignment where the student's living space has no carpet; common areas may still be carpeted." },
+                { id: 'elevator_access',               label: 'Elevator Access',                           pending: false, glossary: 'A housing assignment that can be reached using a building elevator.' },
+                { id: 'ground_floor_access',           label: 'Ground Floor Access',                       pending: false, glossary: 'A room located on a level accessible without stairs or an elevator; may be reached via an ADA-compliant ramp.' },
+                { id: 'personal_refrigerator',         label: 'Personal Refrigerator',                     pending: false, glossary: 'Approval for a refrigerator larger than 4.5 cubic feet within the housing assignment, or more than one refrigerator of 4.5 cubic feet.' },
+                { id: 'room_nearest_bathroom',         label: 'Room Nearest Bathroom',                     pending: false, glossary: 'A room located within three doors of a single-use or communal bathroom, including adjacent or across-the-hall rooms.' },
+                { id: 'room_with_sink',                label: 'Room With Sink',                            pending: true,  glossary: 'A housing assignment with a privately accessible sink located inside the room. (Data pending for Meyran and Coblentz.)' },
+                { id: 'roommate_free',                 label: 'Roommate-free',                             pending: false, glossary: 'A room containing only college-provided standard furniture, with no other resident assigned to the space.' },
+                { id: 'space_for_medical_equipment',   label: 'Space for Medical Equipment',               pending: false, glossary: 'A housing assignment with sufficient space to accommodate required medical equipment; Facilities may remove furniture via work order to create space.' },
+                { id: 'window_hvac_unit',              label: 'Window Unit/Ability to Control Thermostat', pending: true,  glossary: 'A room where the student can control temperature from within the space using an in-room thermostat or window HVAC unit. (Data pending for all buildings.)' }
             ],
             filters: { maxPrice: 6000, selectedNeeds: [] },
+            priceMin: 0,
+            priceMax: 6000,
             rankedList: [],
-            
+
+            normalizeRoom(r) {
+                const yOrN = v => (v === 'Y' || v === 'y') ? 'Y' : 'N';
+                const parsePriceNumeric = dormPlan => {
+                    if (!dormPlan) return null;
+                    const num = parseFloat(String(dormPlan).replace(/[^0-9.]/g, ''));
+                    return isNaN(num) ? null : num;
+                };
+                return {
+                    building:                    r['Building']          ?? r['building'],
+                    room:                        r['Room']              ?? r['room'],
+                    room_type:                   r['Room Type']         ?? r['room_type'],
+                    dorm_plan:                   r['Dorm Plan']         ?? r['dorm_plan'],
+                    price_numeric:               r['price_numeric'] !== undefined ? r['price_numeric'] : parsePriceNumeric(r['Dorm Plan']),
+                    access_to_single_use_bathroom: yOrN(r['Access to Single-Use Bathroom']           ?? r['access_to_single_use_bathroom']),
+                    bathroom_attached:           yOrN(r['Bathroom Attached']                          ?? r['bathroom_attached']),
+                    carpet_free:                 yOrN(r['Carpet-Free']                                ?? r['carpet_free']),
+                    elevator_access:             yOrN(r['Elevator Access']                            ?? r['elevator_access']),
+                    ground_floor_access:         yOrN(r['Ground Floor Access']                        ?? r['ground_floor_access']),
+                    personal_refrigerator:       yOrN(r['Personal Refrigerator']                      ?? r['personal_refrigerator']),
+                    room_nearest_bathroom:       yOrN(r['Room Nearest Bathroom']                      ?? r['room_nearest_bathroom']),
+                    room_with_sink:              yOrN(r['Room With Sink']                             ?? r['room_with_sink']),
+                    roommate_free:               yOrN(r['Roommate-Free']                              ?? r['roommate_free']),
+                    space_for_medical_equipment: yOrN(r['Space For Medical Equipment']                ?? r['space_for_medical_equipment']),
+                    window_hvac_unit:            yOrN(r['Window Unit/Ability to Control Thermostat']  ?? r['window_hvac_unit']),
+                };
+            },
+
             async init() {
                 try {
-                    const response = await fetch('data/rooms_data.json');
+                    const response = await fetch('data/output.json');
                     if (!response.ok) throw new Error('Data could not be fetched');
-                    this.rooms = await response.json();
+                    const raw = await response.json();
+                    this.rooms = raw.map(r => this.normalizeRoom(r));
+                    const prices = this.rooms.map(r => r.price_numeric).filter(p => p !== null && p !== undefined && p > 0);
+                    const STEP = 50;
+                    if (prices.length > 0) {
+                        this.priceMin = Math.floor(Math.min(...prices) / STEP) * STEP;
+                        this.priceMax = Math.ceil(Math.max(...prices)  / STEP) * STEP;
+                        this.filters.maxPrice = this.priceMax;
+                    }
                 } catch (err) {
-                    console.error("Load error:", err);
-                    this.announce("Failed to load housing data.");
+                    console.error('Load error:', err);
+                    this.announce('Failed to load housing data.');
                 } finally {
                     this.loading = false;
                 }
@@ -199,56 +350,38 @@
 
             toggleNeed(id) {
                 if (this.filters.selectedNeeds.includes(id)) {
-                    this.filters.selectedNeeds = this.filters.selectedNeeds.filter(item => item !== id);
-                    this.announce(id + " turned OFF");
+                    this.filters.selectedNeeds = this.filters.selectedNeeds.filter(i => i !== id);
+                    this.announce(id + ' turned OFF');
                 } else {
                     this.filters.selectedNeeds.push(id);
-                    this.announce(id + " turned ON");
+                    this.announce(id + ' turned ON');
                 }
             },
 
             get filteredRooms() {
                 return this.rooms.filter(room => {
-                    const priceCheck = room.price_numeric <= this.filters.maxPrice;
+                    const priceCheck = (room.price_numeric || 0) <= Number(this.filters.maxPrice);
                     const needsCheck = this.filters.selectedNeeds.every(need => room[need] === 'Y');
                     return priceCheck && needsCheck;
                 });
             },
 
             addToRanked(room) {
-                if (!this.isRanked(room)) {
-                    this.rankedList.push(room);
-                    this.announce(room.building + " added to list.");
-                }
+                if (!this.isRanked(room)) { this.rankedList.push(room); this.announce(room.building + ' added to list.'); }
             },
-
             removeFromRanked(index) { this.rankedList.splice(index, 1); },
             isRanked(room) { return this.rankedList.some(r => r.building === room.building && r.room === room.room); },
-            
-            moveUp(index) { 
-                if(index > 0) {
-                    const el = this.rankedList.splice(index, 1)[0];
-                    this.rankedList.splice(index - 1, 0, el);
-                }
+            moveUp(index) {
+                if (index > 0) { const el = this.rankedList.splice(index, 1)[0]; this.rankedList.splice(index - 1, 0, el); }
             },
-
-            moveDown(index) { 
-                if(index < this.rankedList.length - 1) {
-                    const el = this.rankedList.splice(index, 1)[0];
-                    this.rankedList.splice(index + 1, 0, el);
-                }
+            moveDown(index) {
+                if (index < this.rankedList.length - 1) { const el = this.rankedList.splice(index, 1)[0]; this.rankedList.splice(index + 1, 0, el); }
             },
-
-            resetFilters() { 
-                this.filters.maxPrice = 6000; 
-                this.filters.selectedNeeds = []; 
-            },
-
+            resetFilters() { this.filters.maxPrice = this.priceMax; this.filters.selectedNeeds = []; },
             announce(msg) { document.getElementById('announcer').innerText = msg; },
-
             downloadList() {
-                let content = "ACCESSMATCH RANKED PREFERENCES\n\n";
-                this.rankedList.forEach((r, i) => content += (i+1) + ". " + r.building + " Room " + r.room + " (" + r.room_type + ")\n");
+                let content = 'ACCESSMATCH RANKED PREFERENCES\n\n';
+                this.rankedList.forEach((r, i) => content += (i + 1) + '. ' + r.building + ' Room ' + r.room + ' (' + r.room_type + ')\n');
                 const blob = new Blob([content], { type: 'text/plain' });
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
