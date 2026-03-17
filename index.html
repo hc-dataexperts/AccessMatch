@@ -186,7 +186,7 @@
             
             async init() {
                 try {
-                    const response = await fetch('rooms_data.json');
+                    const response = await fetch('data/rooms_data.json');
                     if (!response.ok) throw new Error('Data could not be fetched');
                     this.rooms = await response.json();
                 } catch (err) {
